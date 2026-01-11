@@ -24,7 +24,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Find NDK
 if(NOT DEFINED ANDROID_NDK)
-    if(DEFINED ENV{NDK_PATH})
+    if(DEFINED ENV{ANDROID_NDK})
+        set(ANDROID_NDK $ENV{ANDROID_NDK})
+    elseif(DEFINED ENV{NDK_PATH})
         set(ANDROID_NDK $ENV{NDK_PATH})
     elseif(EXISTS "$ENV{HOME}/Android/Sdk/ndk")
         file(GLOB NDK_VERSIONS "$ENV{HOME}/Android/Sdk/ndk/*")

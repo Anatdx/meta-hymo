@@ -41,16 +41,20 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y cmake ninja-build
 
+      - name: Extract Version
+        run: |
+          VERSION=$(grep "^version=" module/module.prop | cut -d= -f2)
+          echo "MODULE_VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Building version: $VERSION"
+
       - name: Build Project
         env:
           ANDROID_NDK: ${{ steps.setup-ndk.outputs.ndk-path }}
+          NDK_PATH: ${{ steps.setup-ndk.outputs.ndk-path }}
         run: |
+          echo "NDK Path: $ANDROID_NDK"
           ./build.sh init
           ./build.sh package
-          
-          # Extract version from module.prop
-          VERSION=$(grep "^version=" module/module.prop | cut -d= -f2)
-          echo "MODULE_VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Sign Module (Internal)
         if: github.actor == 'Anatdx'
