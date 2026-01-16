@@ -248,7 +248,7 @@ const realApi = {
     throw new Error('Sync failed')
   },
 
-  async scanPartitionsFromModules(moduledir: string): Promise<string[]> {
+  async scanPartitionsFromModules(_moduledir: string): Promise<string[]> {
       await initKernelSU()
       if (!ksuExec) return []
       
@@ -256,7 +256,7 @@ const realApi = {
       // This checks module directories against system mountpoints
       const cmd = `${PATHS.BINARY} sync-partitions 2>&1`
       try {
-        const { errno, stdout } = await ksuExec!(cmd)
+        const { stdout } = await ksuExec!(cmd)
         const partitions = new Set<string>()
         
         // Parse output for "Added partition: <name>" or "No new partitions"
@@ -273,6 +273,7 @@ const realApi = {
           console.error("Failed to scan partitions", e)
       }
       return []
+  },
   },
 
   async readLogs(logPath: string, lines = 1000): Promise<string> {
