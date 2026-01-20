@@ -148,6 +148,9 @@ static bool try_setup_erofs(const fs::path& target, const fs::path& modules_dir,
         return false;
     }
 
+    // Register unmountable path for proper cleanup
+    send_unmountable(target);
+
     LOG_INFO("EROFS active (read-only, compressed)");
     return true;
 }
@@ -173,6 +176,9 @@ static std::string setup_ext4_image(const fs::path& target, const fs::path& imag
             throw std::runtime_error("Failed to repair modules.img");
         }
     }
+
+    // Register unmountable path for proper cleanup
+    send_unmountable(target);
 
     LOG_INFO("Ext4 active.");
     return "ext4";

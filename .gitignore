@@ -26,3 +26,4 @@ compile_commands.json
 /webui/dist
 /module/webroot/*
 !module/webroot/.gitkeep
+.DS_Store

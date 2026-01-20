@@ -312,6 +312,9 @@ bool send_unmountable(const fs::path& target) {
 
     if (ioctl(fd, KSU_IOCTL_ADD_TRY_UMOUNT, &cmd) == 0) {
         sent_unmounts.insert(path_str);
+        LOG_DEBUG("Registered unmountable path: " + path_str);
+    } else {
+        LOG_WARN("Failed to register unmountable path: " + path_str);
     }
 #endif // #ifdef __ANDROID__
     return true;

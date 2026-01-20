@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useStore } from '@/store'
 import { Card, Button } from '@/components/ui'
-import { Github, BookOpen, AlertTriangle } from 'lucide-react'
+import { Gitlab, BookOpen, AlertTriangle } from 'lucide-react'
 
 export function InfoPage() {
   const { t } = useStore((state) => state)
@@ -88,7 +88,7 @@ export function InfoPage() {
           </div>
           <div className="flex justify-between items-center py-2">
             <span className="text-gray-500 dark:text-gray-400">License</span>
-            <span className="text-gray-900 dark:text-white">GPL-3.0</span>
+            <span className="text-gray-900 dark:text-white">Apache 2.0</span>
           </div>
         </div>
       </Card>
@@ -99,16 +99,16 @@ export function InfoPage() {
           <Button
             variant="secondary"
             className="w-full justify-start h-[50px]"
-            onClick={() => window.open('https://github.com/Anatdx/hymo', '_blank')}
+            onClick={() => window.open('https://gitlab.com/Anatdx/hymo', '_blank')}
           >
-            <Github size={20} className="mr-3" />
+            <Gitlab size={20} className="mr-3" />
             {t.info.github}
           </Button>
           
           <Button
             variant="secondary"
             className="w-full justify-start h-[50px]"
-            onClick={() => window.open('https://github.com/Anatdx/hymo/blob/main/README.md', '_blank')}
+            onClick={() => window.open('https://gitlab.com/Anatdx/hymo/blob/main/README.md', '_blank')}
           >
             <BookOpen size={20} className="mr-3" />
             {t.info.docs}

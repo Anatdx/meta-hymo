@@ -9,6 +9,12 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    host: '0.0.0.0', // 监听所有网络接口
+    port: 8080,
+    strictPort: false,
+    open: false,
+  },
   build: {
     outDir: 'dist',
     emptyOutDir: true,
