@@ -5,8 +5,6 @@
 #include <string>
 #include <vector>
 
-// #define HYMO_PROTOCOL_VERSION 7 // Moved to hymo_magic.h
-
 namespace hymo {
 
 // Directories
@@ -19,6 +17,7 @@ constexpr const char* SYSTEM_RW_DIR = "/data/adb/hymo/rw";
 constexpr const char* MODULE_PROP_FILE = "/data/adb/modules/hymo/module.prop";
 
 // Marker files
+constexpr const char* CONFIG_FILENAME = "config.json";
 constexpr const char* DISABLE_FILE_NAME = "disable";
 constexpr const char* REMOVE_FILE_NAME = "remove";
 constexpr const char* SKIP_MOUNT_FILE_NAME = "skip_mount";

@@ -1,5 +1,7 @@
 // core/storage.cpp - Storage backend (Tmpfs/Ext4/EROFS)
 #include "storage.hpp"
+#include <fcntl.h>
+#include <sched.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/vfs.h>
@@ -56,34 +58,74 @@ static void repair_storage_root_permissions(const fs::path& target) {
     }
 }
 
-static bool create_image(const fs::path& base_dir) {
+// Remove static to expose it
+bool create_image(const fs::path& base_dir) {
     LOG_INFO("Creating modules.img...");
-    fs::path script = base_dir / "createimg.sh";
-    if (!fs::exists(script)) {
-        LOG_ERROR("createimg.sh not found at " + script.string());
+    fs::path img_file = base_dir / "modules.img";
+
+    // Ensure directory exists
+    if (!fs::exists(base_dir)) {
+        fs::create_directories(base_dir);
+    }
+
+    // Remove existing file to ensure clean state
+    if (fs::exists(img_file)) {
+        fs::remove(img_file);
+    }
+
+    // 1. Create file with dd
+    // Use dd instead of truncate for better compatibility and to avoid sparse file issues
+    // Try standard paths first
+    const char* dd_paths[] = {"/system/bin/dd", "/sbin/dd"};
+    std::string dd_bin = "dd";
+    for (const auto& p : dd_paths) {
+        if (access(p, X_OK) == 0) {
+            dd_bin = p;
+            break;
+        }
+    }
+
+    std::string dd_cmd =
+        dd_bin + " if=/dev/zero of=" + img_file.string() + " bs=1M count=2048 >/dev/null 2>&1";
+    if (std::system(dd_cmd.c_str()) != 0) {
+        LOG_ERROR("Failed to create image file with dd (" + dd_bin + ")");
         return false;
     }
 
-    std::string cmd = "sh " + script.string() + " " + base_dir.string() + " 2048 2>&1";
-    FILE* pipe = popen(cmd.c_str(), "r");
-    if (!pipe) {
-        LOG_ERROR("Failed to execute createimg.sh");
+    // 2. Disable F2FS compression (if supported)
+    const char* chattr_paths[] = {"/system/bin/chattr", "/system/xbin/chattr", "/sbin/chattr"};
+    std::string chattr_bin = "chattr";
+    for (const auto& p : chattr_paths) {
+        if (access(p, X_OK) == 0) {
+            chattr_bin = p;
+            break;
+        }
+    }
+    std::string chattr_cmd = chattr_bin + " -c " + img_file.string() + " >/dev/null 2>&1";
+    std::system(chattr_cmd.c_str());
+
+    // 3. Find mke2fs
+    const char* mke2fs_paths[] = {"/system/bin/mke2fs", "/sbin/mke2fs"};
+    std::string mke2fs_bin = "mke2fs";  // fallback to PATH
+    for (const auto& p : mke2fs_paths) {
+        if (access(p, X_OK) == 0) {
+            mke2fs_bin = p;
+            break;
+        }
+    }
+
+    // 4. Format
+    // -t ext4 -O ^has_journal,^metadata_csum,^64bit -F
+    std::string mkfs_cmd = mke2fs_bin + " -t ext4 -O ^has_journal,^metadata_csum,^64bit -F " +
+                           img_file.string() + " >/dev/null 2>&1";
+
+    if (std::system(mkfs_cmd.c_str()) != 0) {
+        LOG_ERROR("Failed to format ext4 image");
+        fs::remove(img_file);
         return false;
     }
 
-    char buffer[256];
-    std::string output = "";
-    while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
-        output += buffer;
-    }
-
-    int ret = pclose(pipe);
-    if (WEXITSTATUS(ret) != 0) {
-        LOG_ERROR("Failed to create image: " + output);
-        return false;
-    }
-
-    LOG_INFO("Image creation output: " + output);
+    LOG_INFO("Image created successfully: " + img_file.string());
     return true;
 }
 
@@ -279,13 +321,19 @@ static std::string format_size(uint64_t bytes) {
 void print_storage_status() {
     auto state = load_runtime_state();
 
+    // Daemon PID is registered in kernel, no need for setns
+    // Kernel grants visibility to registered daemon's mounts
+
     fs::path path =
         state.mount_point.empty() ? fs::path(FALLBACK_CONTENT_DIR) : fs::path(state.mount_point);
 
+    json::Value root = json::Value::object();
+    root["path"] = json::Value(path.string());
+    root["pid"] = json::Value(state.pid);
+
     if (!fs::exists(path)) {
-        json::Value err = json::Value::object();
-        err["error"] = json::Value("Not mounted");
-        std::cout << json::dump(err) << "\n";
+        root["error"] = json::Value("Not mounted");
+        std::cout << json::dump(root) << "\n";
         return;
     }
 
@@ -293,9 +341,8 @@ void print_storage_status() {
 
     struct statfs stats;
     if (statfs(path.c_str(), &stats) != 0) {
-        json::Value err = json::Value::object();
-        err["error"] = json::Value("statvfs failed");
-        std::cout << json::dump(err) << "\n";
+        root["error"] = json::Value("statvfs failed: " + std::string(strerror(errno)));
+        std::cout << json::dump(root) << "\n";
         return;
     }
 
@@ -305,7 +352,11 @@ void print_storage_status() {
     uint64_t used_bytes = total_bytes > free_bytes ? total_bytes - free_bytes : 0;
     double percent = total_bytes > 0 ? (used_bytes * 100.0 / total_bytes) : 0.0;
 
-    json::Value root = json::Value::object();
+    // Explicitly check for 0 total bytes which might indicate issue with the mount
+    if (total_bytes == 0) {
+        root["warning"] = json::Value("Zero size detected");
+    }
+
     root["size"] = json::Value(format_size(total_bytes));
     root["used"] = json::Value(format_size(used_bytes));
     root["avail"] = json::Value(format_size(free_bytes));

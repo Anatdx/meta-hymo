@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useStore } from '@/store'
 import { api } from '@/services/api'
 import { Card, Button, Select } from '@/components/ui'
-import { RefreshCw, Terminal, Copy, Search } from 'lucide-react'
+import { RefreshCw, Terminal, Copy, Search, Trash2 } from 'lucide-react'
 
 export function LogsPage() {
   const { t } = useStore((state) => state)
@@ -38,6 +38,19 @@ export function LogsPage() {
     if (!logs) return
     navigator.clipboard.writeText(logs)
     useStore.getState().showToast(t.logs.copied, 'success')
+  }
+
+  const handleClearLogs = async () => {
+    if (logType !== 'system') return // 只允许清除 daemon 日志
+    
+    try {
+      await api.clearLogs()
+      setLogs('')
+      useStore.getState().showToast(t.logs.cleared || 'Logs cleared', 'success')
+      setTimeout(loadLogs, 500) // 刷新查看清空后的状态
+    } catch (error) {
+      useStore.getState().showToast(t.logs.clearFailed || 'Failed to clear logs', 'error')
+    }
   }
 
   const renderLogLine = (line: string, index: number) => {
@@ -132,6 +145,12 @@ export function LogsPage() {
                 <Copy size={14} />
               </Button>
 
+              {logType === 'system' && (
+                <Button onClick={handleClearLogs} size="sm" variant="danger" title="Clear Logs" className="h-8 w-8 !p-0">
+                  <Trash2 size={14} />
+                </Button>
+              )}
+
               <Button onClick={handleRefresh} disabled={loading} size="sm" className="h-8 w-8 !p-0">
                 <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
               </Button>
@@ -145,6 +164,7 @@ export function LogsPage() {
               placeholder="Search logs..."
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
+              onTouchStart={(e) => e.stopPropagation()}
             />
           </div>
         </div>

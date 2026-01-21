@@ -116,6 +116,7 @@ export function Input({ label, error, className, ...props }: InputProps) {
           error && 'border-red-500',
           className
         )}
+        onTouchStart={(e) => e.stopPropagation()}
         {...props}
       />
       {error && <p className="text-sm text-red-400">{error}</p>}

@@ -71,6 +71,10 @@ const mockApi = {
     return 'Sample log line 1\nSample log line 2\nSample log line 3'
   },
 
+  async clearLogs(): Promise<void> {
+    console.log('[Mock] Logs cleared')
+  },
+
   async getStorageUsage(): Promise<StorageInfo> {
     return {
       size: '512M',
@@ -405,7 +409,7 @@ const realApi = {
     await initKernelSU()
     if (!ksuExec) throw new Error('KernelSU not available')
     
-    const cmd = `${PATHS.BINARY} add "${moduleId}"`
+    const cmd = `${PATHS.BINARY} hot-mount "${moduleId}"`
     const { errno } = await ksuExec!(cmd)
     if (errno !== 0) throw new Error('Hot mount failed')
   },
@@ -414,7 +418,7 @@ const realApi = {
     await initKernelSU()
     if (!ksuExec) throw new Error('KernelSU not available')
     
-    const cmd = `${PATHS.BINARY} delete "${moduleId}"`
+    const cmd = `${PATHS.BINARY} hot-unmount "${moduleId}"`
     const { errno } = await ksuExec!(cmd)
     if (errno !== 0) throw new Error('Hot unmount failed')
   },
@@ -522,6 +526,18 @@ const realApi = {
     const { errno, stderr } = await ksuExec!(cmd)
     if (errno !== 0) {
       throw new Error(stderr || 'Failed to remove hide rule')
+    }
+  },
+
+  async clearLogs(): Promise<void> {
+    await initKernelSU()
+    if (!ksuExec) throw new Error('KernelSU not available')
+    
+    // Clear daemon log file
+    const cmd = `echo -n > /data/adb/hymo/daemon.log`
+    const { errno, stderr } = await ksuExec!(cmd)
+    if (errno !== 0) {
+      throw new Error(stderr || 'Failed to clear logs')
     }
   },
 }

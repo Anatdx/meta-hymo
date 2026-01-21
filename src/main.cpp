@@ -1,6 +1,7 @@
 // main.cpp - Main entry point
 #include <getopt.h>
 #include <sys/mount.h>
+#include <unistd.h>
 #include <algorithm>
 #include <cstdlib>
 #include <fstream>
@@ -68,7 +69,10 @@ static void print_help() {
     std::cout << "  set-mirror <path> Set custom mirror path for HymoFS\n";
     std::cout << "  fix-mounts      Fix mount namespace issues (reorder mnt_id)\n";
     std::cout << "  sync-partitions Scan modules and auto-add new partitions to "
-                 "config\n\n";
+                 "config\n";
+    std::cout << "  create-image [dir] Create modules.img in specified directory (or default)\n";
+    std::cout << "  hot-mount <mod_id> Hot mount a module (live reload)\n";
+    std::cout << "  hot-unmount <mod_id> Hot unmount a module (live reload)\n\n";
     std::cout << "Options:\n";
     std::cout << "  -c, --config FILE       Config file path\n";
     std::cout << "  -m, --moduledir DIR     Module directory\n";
@@ -208,7 +212,7 @@ static Config load_config(const CliOptions& opts) {
     try {
         return Config::load_default();
     } catch (const std::exception& e) {
-        fs::path default_path = fs::path(BASE_DIR) / "config.toml";
+        fs::path default_path = fs::path(BASE_DIR) / CONFIG_FILENAME;
         if (fs::exists(default_path)) {
             std::cerr << "Error loading config: " << e.what() << "\n";
         }
@@ -231,7 +235,7 @@ int main(int argc, char* argv[]) {
         // Process commands
         if (!cli.command.empty()) {
             if (cli.command == "gen-config") {
-                std::string output = cli.output.empty() ? "config.toml" : cli.output;
+                std::string output = cli.output.empty() ? CONFIG_FILENAME : cli.output;
                 Config().save_to_file(output);
                 std::cout << "Generated config: " << output << "\n";
                 return 0;
@@ -303,7 +307,7 @@ int main(int argc, char* argv[]) {
 
                 if (added > 0) {
                     fs::path config_path = cli.config_file.empty()
-                                               ? (fs::path(BASE_DIR) / "config.toml")
+                                               ? (fs::path(BASE_DIR) / CONFIG_FILENAME)
                                                : fs::path(cli.config_file);
                     if (config.save_to_file(config_path)) {
                         std::cout << "Updated config with " << added << " new partitions.\n";
@@ -315,6 +319,127 @@ int main(int argc, char* argv[]) {
                     std::cout << "No new partitions found.\n";
                 }
                 return 0;
+            } else if (cli.command == "create-image") {
+                fs::path target_dir = cli.args.empty() ? fs::path(BASE_DIR) : fs::path(cli.args[0]);
+                if (create_image(target_dir)) {
+                    std::cout << "Successfully created image at " << target_dir << "/modules.img\n";
+                    return 0;
+                } else {
+                    std::cerr << "Failed to create image\n";
+                    return 1;
+                }
+            } else if (cli.command == "hot-mount") {
+                if (cli.args.empty()) {
+                    std::cerr << "Usage: hymod hot-mount <module_id>\n";
+                    return 1;
+                }
+                std::string mod_id = cli.args[0];
+
+                fs::path hot_unmounted = fs::path(RUN_DIR) / "hot_unmounted" / mod_id;
+                if (fs::exists(hot_unmounted))
+                    fs::remove(hot_unmounted);
+
+                Config config = load_config(cli);
+                fs::path disabled_file = config.moduledir / mod_id / "disable";
+                if (fs::exists(disabled_file))
+                    fs::remove(disabled_file);
+
+                fs::path module_path = config.moduledir / mod_id;
+                if (!fs::exists(module_path)) {
+                    std::cerr << "Error: Module not found: " << mod_id << "\n";
+                    return 1;
+                }
+
+                std::vector<std::string> all_partitions = BUILTIN_PARTITIONS;
+                all_partitions.insert(all_partitions.end(), config.partitions.begin(),
+                                      config.partitions.end());
+                std::sort(all_partitions.begin(), all_partitions.end());
+                all_partitions.erase(std::unique(all_partitions.begin(), all_partitions.end()),
+                                     all_partitions.end());
+
+                int success_count = 0;
+                for (const auto& part : all_partitions) {
+                    fs::path src_dir = module_path / part;
+                    if (fs::exists(src_dir) && fs::is_directory(src_dir)) {
+                        fs::path target_base = fs::path("/") / part;
+                        if (HymoFS::add_rules_from_directory(target_base, src_dir)) {
+                            if (config.verbose)
+                                std::cout << "Added rules for " << src_dir << "\n";
+                            success_count++;
+                        }
+                    }
+                }
+
+                if (success_count > 0) {
+                    std::cout << "Successfully added module " << mod_id << "\n";
+                    LOG_INFO("CLI: Hot mounted module " + mod_id);
+
+                    RuntimeState state = load_runtime_state();
+                    bool already_active = false;
+                    for (const auto& id : state.hymofs_module_ids) {
+                        if (id == mod_id) {
+                            already_active = true;
+                            break;
+                        }
+                    }
+                    if (!already_active) {
+                        state.hymofs_module_ids.push_back(mod_id);
+                        state.save();
+                    }
+                } else {
+                    std::cout << "No content found to add for module " << mod_id << "\n";
+                }
+                return 0;
+
+            } else if (cli.command == "hot-unmount") {
+                if (cli.args.empty()) {
+                    std::cerr << "Usage: hymod hot-unmount <module_id>\n";
+                    return 1;
+                }
+                std::string mod_id = cli.args[0];
+
+                // 1. Create marker
+                fs::path hot_unmounted_dir = fs::path(RUN_DIR) / "hot_unmounted";
+                if (!fs::exists(hot_unmounted_dir))
+                    fs::create_directories(hot_unmounted_dir);
+                std::ofstream(hot_unmounted_dir / mod_id).close();
+
+                // 2. Delete logic
+                Config config = load_config(cli);
+                std::vector<std::string> all_partitions = BUILTIN_PARTITIONS;
+                all_partitions.insert(all_partitions.end(), config.partitions.begin(),
+                                      config.partitions.end());
+                std::sort(all_partitions.begin(), all_partitions.end());
+                all_partitions.erase(std::unique(all_partitions.begin(), all_partitions.end()),
+                                     all_partitions.end());
+
+                fs::path module_path = config.moduledir / mod_id;
+
+                int success_count = 0;
+                for (const auto& part : all_partitions) {
+                    fs::path src_dir = module_path / part;
+                    fs::path target_base = fs::path("/") / part;
+                    if (HymoFS::remove_rules_from_directory(target_base, src_dir)) {
+                        success_count++;
+                    }
+                }
+
+                if (success_count > 0) {
+                    std::cout << "Successfully hot unmounted module " << mod_id << "\n";
+                    LOG_INFO("CLI: Hot unmounted module " + mod_id);
+
+                    RuntimeState state = load_runtime_state();
+                    auto it = std::remove(state.hymofs_module_ids.begin(),
+                                          state.hymofs_module_ids.end(), mod_id);
+                    if (it != state.hymofs_module_ids.end()) {
+                        state.hymofs_module_ids.erase(it, state.hymofs_module_ids.end());
+                        state.save();
+                    }
+                } else {
+                    std::cout << "No active rules found for module " << mod_id << "\n";
+                }
+                return 0;
+
             } else if (cli.command == "add") {
                 Config config = load_config(cli);
                 if (cli.args.empty()) {
@@ -1331,6 +1456,7 @@ int main(int argc, char* argv[]) {
         state.magic_module_ids = exec_result.magic_module_ids;
         state.hymofs_module_ids = plan.hymofs_module_ids;
         state.nuke_active = nuke_active;
+        state.pid = getpid();
 
         // Track active mount partitions
         if (!plan.hymofs_module_ids.empty()) {

@@ -76,8 +76,12 @@ struct hymo_spoof_kstat {
  */
 #define HYMO_UNAME_LEN 65
 struct hymo_spoof_uname {
+    char sysname[HYMO_UNAME_LEN];
+    char nodename[HYMO_UNAME_LEN];
     char release[HYMO_UNAME_LEN]; /* e.g., "5.15.0-generic" */
     char version[HYMO_UNAME_LEN]; /* e.g., "#1 SMP PREEMPT ..." */
+    char machine[HYMO_UNAME_LEN];
+    char domainname[HYMO_UNAME_LEN];
     int err;
 };
 

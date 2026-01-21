@@ -46,24 +46,21 @@ done
 BASE_DIR="/data/adb/hymo"
 mkdir -p "$BASE_DIR"
 
-# Install createimg.sh
-cp "$MODPATH/createimg.sh" "$BASE_DIR/createimg.sh"
-chmod 755 "$BASE_DIR/createimg.sh"
 
 # Handle Config
-if [ ! -f "$BASE_DIR/config.toml" ]; then
+if [ ! -f "$BASE_DIR/config.json" ]; then
   ui_print "- Installing default config"
-  cat "$MODPATH/config.toml" > "$BASE_DIR/config.toml"
+  # Generate default config using hymod
+  $MODPATH/hymod gen-config -o "$BASE_DIR/config.json"
 fi
 
 # Handle Image Creation (Borrowed from meta-overlayfs)
 IMG_FILE="$BASE_DIR/modules.img"
 IMG_SIZE_MB=2048
 
-# Check if force_ext4 is enabled in config
-FORCE_EXT4=false
-if [ -f "$BASE_DIR/config.toml" ]; then
-    if grep -q "force_ext4 = true" "$BASE_DIR/config.toml"; then
+# Check if force_ext4 is enabled in config 
+if [ -f "$BASE_DIR/config.json" ]; then
+    if grep -q "\"fs_type\": \"ext4\"" "$BASE_DIR/config.json"; then
         FORCE_EXT4=true
         ui_print "- Force Ext4 mode enabled in config"
     fi
@@ -80,7 +77,8 @@ if [ ! -f "$IMG_FILE" ]; then
              ui_print "- Creating 2GB ext4 image for module storage..."
         fi
         
-        sh "$BASE_DIR/createimg.sh" "$BASE_DIR" "$IMG_SIZE_MB"
+        # Use hymod to create image
+        $MODPATH/hymod create-image "$BASE_DIR"
         
         if [ $? -ne 0 ]; then
             ui_print "! Failed to format ext4 image"

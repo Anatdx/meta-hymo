@@ -88,8 +88,11 @@ export function StatusPage() {
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{t.status.systemInfo}</h3>
         <div className="space-y-3">
           <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-white/10">
-            <span className="text-gray-500 dark:text-gray-400">{t.status.kernel}</span>
-            <span className="text-gray-900 dark:text-white font-mono text-sm">{systemInfo.kernel}</span>
+            <span className="text-gray-500 dark:text-gray-400 flex-shrink-0">{t.status.kernel}</span>
+            <span 
+              className="text-gray-900 dark:text-white font-mono text-sm overflow-x-auto whitespace-nowrap ml-4 no-scrollbar"
+              onTouchStart={(e) => e.stopPropagation()}
+            >{systemInfo.kernel}</span>
           </div>
           <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-white/10">
             <span className="text-gray-500 dark:text-gray-400">{t.status.selinux}</span>

@@ -170,10 +170,10 @@ export function ConfigPage() {
             <RadioCards
               label={t.config.fsType || "Filesystem Type"}
               options={[
-                  { value: "auto", label: "Auto", description: "Recommended (Try Tmpfs -> EROFS -> Ext4)" },
-                  { value: "ext4", label: "Ext4", description: "Read-Write, Persistent loop image" },
-                  { value: "erofs", label: "EROFS", description: "Read-Only, High performance" },
-                  { value: "tmpfs", label: "Tmpfs", description: "RAM based, requires xattr support", disabled: !config.tmpfs_xattr_supported },
+                  { value: "auto", label: t.config.fsAuto, description: t.config.fsAutoDesc },
+                  { value: "tmpfs", label: t.config.fsTmpfs, description: t.config.fsTmpfsDesc, disabled: !config.tmpfs_xattr_supported },
+                  { value: "erofs", label: t.config.fsErofs, description: t.config.fsErofsDesc },
+                  { value: "ext4", label: t.config.fsExt4, description: t.config.fsExt4Desc },
               ]}
               value={config.fs_type}
               onChange={(val) => updateConfig({ fs_type: val })}
@@ -201,7 +201,7 @@ export function ConfigPage() {
               <Switch
                 checked={config.hymofs_enabled}
                 onChange={(checked) => updateConfig({ hymofs_enabled: checked })}
-                label={t.config.enableHymoFS || "Enable HymoFS (Protocol 11)"}
+                label={t.config.enableHymoFS || "Enable HymoFS"}
               />
             )}
 

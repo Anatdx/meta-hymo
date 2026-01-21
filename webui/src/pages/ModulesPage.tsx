@@ -188,14 +188,23 @@ export function ModulesPage() {
             return (
               <Card key={module.id}>
                 <div className="flex items-start justify-between mb-2">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="text-lg font-semibold text-gray-900 dark:text-white">{module.name}</h4>
+                  <div className="flex-1 min-w-0">
+                    <div 
+                      className="flex items-center gap-2 mb-1 overflow-x-auto no-scrollbar"
+                      onTouchStart={(e) => e.stopPropagation()}
+                    >
+                      <h4 className="text-lg font-semibold text-gray-900 dark:text-white whitespace-nowrap max-w-[180px] truncate">{module.name}</h4>
                       <Badge variant="default">{module.version}</Badge>
                       {isMounted && <Badge variant="success" className="ml-2">{t.modules.mountSuccess}</Badge>}
                     </div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{module.description}</p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 font-mono">{module.id}</p>
+                    <p 
+                      className="text-sm text-gray-500 dark:text-gray-400 overflow-x-auto whitespace-nowrap no-scrollbar"
+                      onTouchStart={(e) => e.stopPropagation()}
+                    >{module.description}</p>
+                    <p 
+                      className="text-xs text-gray-400 dark:text-gray-500 mt-1 font-mono overflow-x-auto whitespace-nowrap no-scrollbar"
+                      onTouchStart={(e) => e.stopPropagation()}
+                    >{module.id}</p>
                   </div>
                   
                   <button

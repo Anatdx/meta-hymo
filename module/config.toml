@@ -1,5 +1,0 @@
-moduledir = "/data/adb/modules/"
-mountsource = "KSU"
-verbose = false
-ignore_protocol_mismatch = false
-partitions = []
