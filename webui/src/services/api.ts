@@ -183,6 +183,7 @@ const realApi = {
       hymofs_enabled: config.hymofs_enabled,
       uname_release: config.uname_release,
       uname_version: config.uname_version,
+      mount_stage: config.mount_stage,
       partitions: config.partitions,
     }
     const data = JSON.stringify(configToSave, null, 2).replace(/'/g, "'\\''")

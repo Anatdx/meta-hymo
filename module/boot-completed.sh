@@ -7,3 +7,4 @@ BASE_DIR="/data/adb/hymo"
 # Clean up mount done flag for next boot
 rm -f "$BASE_DIR/.mount_done"
 rm -f "$BASE_DIR/.log_cleaned"
+rm -rf /dev/hymo_single_instance

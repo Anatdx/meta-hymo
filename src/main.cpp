@@ -292,6 +292,7 @@ int main(int argc, char* argv[]) {
                 std::cout << "  \"moduledir\": \"" << config.moduledir.string() << "\",\n";
                 std::cout << "  \"tempdir\": \"" << config.tempdir.string() << "\",\n";
                 std::cout << "  \"mountsource\": \"" << config.mountsource << "\",\n";
+                std::cout << "  \"mount_stage\": \"" << config.mount_stage << "\",\n";
                 std::cout << "  \"debug\": " << (config.debug ? "true" : "false") << ",\n";
                 std::cout << "  \"verbose\": " << (config.verbose ? "true" : "false") << ",\n";
                 std::cout << "  \"fs_type\": \"" << filesystem_type_to_string(config.fs_type)

@@ -260,7 +260,7 @@ export function ConfigPage() {
         <Card>
           <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">{t.config.advanced}</h3>
             
-          <div className="space-y-4"></div>
+          <div className="space-y-4">
             <Switch
               checked={config.debug}
               onChange={(checked) => updateConfig({ debug: checked })}
@@ -328,6 +328,7 @@ export function ConfigPage() {
               onChange={(e) => updateConfig({ mountsource: e.target.value })}
               placeholder="KSU"
             />
+          </div>
         </Card>
       )}
     </div>

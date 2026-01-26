@@ -3,7 +3,15 @@
 # Mount stage: late (after boot completed)
 
 MODDIR="${0%/*}"
-CONFIG_FILE="/data/adb/hymo/config.json"
+BASE_DIR="/data/adb/hymo"
+LOG_FILE="$BASE_DIR/daemon.log"
+CONFIG_FILE="$BASE_DIR/config.json"
+
+log() {
+    local ts
+    ts="$(date '+%Y-%m-%d %H:%M:%S')"
+    echo "[$ts] [Wrapper] $1" >> "$LOG_FILE"
+}
 
 # Get mount_stage from config
 get_mount_stage() {
@@ -19,8 +27,15 @@ get_mount_stage() {
 MOUNT_STAGE=$(get_mount_stage)
 
 if [ "$MOUNT_STAGE" = "services" ]; then
-    exec "$MODDIR/hymo_mount.sh" "services"
+    log "services: executing mount (stage=$MOUNT_STAGE)"
+    if [ -f "$MODDIR/hymo_mount_common.sh" ]; then
+        . "$MODDIR/hymo_mount_common.sh"
+        run_hymod_mount "$MODDIR" "services"
+        exit $?
+    fi
+    log "services: missing hymo_mount_common.sh"
+    exit 1
 fi
 
-# Not our turn, exit silently
+log "services: skip (stage=$MOUNT_STAGE)"
 exit 0
